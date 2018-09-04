@@ -11,15 +11,15 @@ const int JOY_SW_pin = 2; // digital
 const int JOY_X_pin = 0; // analog
 const int JOY_Y_pin = 1; // analog
 
-// End
-
-const float paddleSpeed = .005;
+// Paddle
+const float paddleSpeed = .004;
 const int paddleWidth = 7;
 const int paddleHeight = 2;
 const int paddlePaddingY = 10;
 float paddleX;
 bool pastPaddle; // If the ball has gone past the paddle already
 
+// Ball
 const int ballSize = 2;
 float ballX, ballY;
 float ballVelX, ballVelY;
@@ -27,7 +27,7 @@ float ballVelX, ballVelY;
 const int roofPadding = 8;
 const int boxWidth = 2;
 const int boxHeight = 2;
-const int boxAmountWidth = 11, boxAmountHeight = 5;
+const int boxAmountWidth = 11, boxAmountHeight = 7;
 
 int score;
 int highScore;
@@ -45,7 +45,7 @@ class MainMenu {
     MainMenu() {}
 
     static const int optionsCount = 3;
-    char* options [optionsCount] = {"Play", "HiSc", "Optn"};
+    char* options [optionsCount] = {"PLAY", "HSCR", "OPTN"};
     int selected = 0;
 
     void updateMainMenu() {
@@ -183,15 +183,18 @@ void setup() {
 
 void ballSpawn() {
   pastPaddle = false;
-  ballX = display.height() / 2;
-  ballY = display.width() / 2;
-  ballVelX = .75f;
-  ballVelY = -1.5f;
-  paddleX = display.height() / 2 - paddleWidth / 2;
+  ballX = display.height() / 2.0f - ballSize / 2.0f;
+  ballY = display.width() / 3.0f - ballSize / 2.0f;
+  ballVelX = .5f * ((rand () % 100) / 50.0f - 1.0f);
+  ballVelY = 2.0f;
+  paddleX = display.height() / 2.0f - paddleWidth / 2.0f;
   if (score > highScore) highScore = score;
   score = 0;
+  showAllBoxes();
   dead = false;
+}
 
+void showAllBoxes() {
   for (int i = 0; i < boxAmountWidth * boxAmountHeight; i++) {
     boxes[i].visible = true;
   }
@@ -241,8 +244,14 @@ void updateGame() {
 }
 
 void updateBoxes() {
+  int visible = 0;
   for (int i = 0; i < boxAmountWidth * boxAmountHeight; i++) {
+    if (boxes[i].visible) visible++;
     boxes[i].hitBall();
+  }
+
+  if (visible == 0) {
+    showAllBoxes(); // Delay the show (?)
   }
 }
 
@@ -252,6 +261,10 @@ void die() {
 }
 
 void moveBall() {
+  float maxVel = 1.0f;
+  if (ballVelX > maxVel) ballVelX = maxVel;
+  if (ballVelX < -maxVel) ballVelX = -maxVel;
+  
   ballX += ballVelX;
   ballY += ballVelY;
 
@@ -279,6 +292,11 @@ void moveBall() {
   if (ballY + ballSize > display.width() - paddlePaddingY && !pastPaddle && ballVelY > 0) {
     if ((ballX + ballSize >= paddleX && ballX < paddleX + paddleWidth)) {
       //ballY = display.width() - paddlePaddingY;
+      float posOnPaddle = ((ballX + ballSize / 2.0f) - (paddleX + paddleWidth / 2.0f)) / paddleWidth;
+      // posOnPaddle = 1 - pow(1 - (posOnPaddle), 2);
+      
+      float paddleXSpeedModifier = 2.0f;
+      ballVelX = posOnPaddle * paddleXSpeedModifier + ballVelX * abs(posOnPaddle);
       ballVelY = -ballVelY;
     } else {
       pastPaddle = true;
@@ -288,7 +306,7 @@ void moveBall() {
 
 void movePaddle() {
   // TODO: Convert to float between 0 and 1, then revert it, then pow it, and then if it
-  int deltaX = analogRead(JOY_X_pin) - 1023 / 2;
+  int deltaX = analogRead(JOY_X_pin) - 1023 / 2.0f;
   paddleX += deltaX * paddleSpeed;
 
   if (paddleX < 0) {
